@@ -1,31 +1,36 @@
 #!/usr/bin/env python3
-"""log stats from collection
+"""
+Provides some stats about Nginx logs stored in MongoDB
 """
 from pymongo import MongoClient
+from typing import List, Dict, Optional
 
 
-METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"]
-
-
-def log_stats(mongo_collection, option=None):
-    """ script that provides some stats about Nginx logs stored in MongoDB
+def count(collection, options: Dict[str, str] = {}) -> int:
     """
-    items = {}
-    if option:
-        value = mongo_collection.count_documents(
-            {"method": {"$regex": option}})
-        print(f"\tmethod {option}: {value}")
-        return
+    Take a mongoDB collection, filter data and count it
 
-    result = mongo_collection.count_documents(items)
-    print(f"{result} logs")
+    Args:
+        collection: MongoDB collection
+        options (Dict[str, str]): options to filter
+    """
+    return collection.count_documents(options)
+
+
+if __name__ == '__main__':
+    client = MongoClient(host="localhost", port=27017)
+    collection = client.logs.nginx
+    methods: List[str] = ["GET", "POST", "PUT", "PATCH", "DELETE"]
+
+    print("{:d} logs".format(count(collection)))
     print("Methods:")
-    for method in METHODS:
-        log_stats(nginx_collection, method)
-    status_check = mongo_collection.count_documents({"path": "/status"})
-    print(f"{status_check} status check")
 
+    for method in methods:
+        print("\tmethod {:s}: {:d}".format(
+            method,
+            count(collection, {"method": method})
+        ))
 
-if __name__ == "__main__":
-    nginx_collection = MongoClient('mongodb://127.0.0.1:27017').logs.nginx
-    log_stats(nginx_collection)
+    print("{:d} status check".format(
+        count(collection, {"method": "GET", "path": "/status"})
+    ))
